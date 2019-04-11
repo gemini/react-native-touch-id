@@ -4,8 +4,10 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.KeyguardManager;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.hardware.fingerprint.FingerprintManager;
 import android.os.Build;
+import android.util.Log;
 
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.LifecycleEventListener;
@@ -14,11 +16,18 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+
 import javax.crypto.Cipher;
 
 public class FingerprintAuthModule extends ReactContextBaseJavaModule implements LifecycleEventListener {
 
     private static final String FRAGMENT_TAG = "fingerprint_dialog";
+    private static final String SAVED_FINGERPRINT_IDS = "SAVED_FINGERPRINT_IDS";
 
     private KeyguardManager keyguardManager;
     private boolean isAppActive;
@@ -48,6 +57,63 @@ public class FingerprintAuthModule extends ReactContextBaseJavaModule implements
     @Override
     public String getName() {
         return "FingerprintAuth";
+    }
+
+    @ReactMethod
+    public void checkIfKeyIsValid(final Callback validCallback) {
+        validCallback.invoke(fingerPrintsAreValid());
+    }
+
+    private boolean fingerPrintsAreValid() {
+        HashSet<String> currentFingerPrints = getFingerprintIds(getReactApplicationContext());
+        HashSet<String> savedFingerPrints = getSavedFingerPrints();
+        return currentFingerPrints.equals(savedFingerPrints);
+    }
+
+    @ReactMethod
+    public void renewKey() {
+        HashSet<String> currentFingerPrints = getFingerprintIds(getReactApplicationContext());
+        SharedPreferences.Editor editor = getReactApplicationContext().getSharedPreferences(FRAGMENT_TAG, Context.MODE_PRIVATE).edit();
+        editor.putStringSet(SAVED_FINGERPRINT_IDS, currentFingerPrints);
+        editor.apply();
+
+    }
+
+    public HashSet<String> getSavedFingerPrints() {
+
+        return new HashSet<String>(getReactApplicationContext().getSharedPreferences(FRAGMENT_TAG, Context.MODE_PRIVATE).getStringSet(SAVED_FINGERPRINT_IDS, new HashSet<String>()));
+    }
+
+    private HashSet<String> getFingerprintIds(Context context)
+    {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+
+            try {
+                FingerprintManager fingerprintManager = (FingerprintManager) context.getSystemService(Context.FINGERPRINT_SERVICE);
+                Method method = null;
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                    method = FingerprintManager.class.getDeclaredMethod("getEnrolledFingerprints");
+                }
+                Object obj = method.invoke(fingerprintManager);
+
+                if (obj != null) {
+                    HashSet<String> fingerprintIds = new HashSet<>();
+                    Class<?> clazz = Class.forName("android.hardware.fingerprint.Fingerprint");
+                    Method getFingerId = clazz.getDeclaredMethod("getFingerId");
+
+                    for (int i = 0; i < ((List) obj).size(); i++) {
+                        Object item = ((List) obj).get(i);
+                        if (item != null) {
+                            fingerprintIds.add("" + getFingerId.invoke(item));
+                        }
+                    }
+                    return fingerprintIds;
+                }
+            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+        return new HashSet<String>();
     }
 
     @ReactMethod
@@ -86,6 +152,12 @@ public class FingerprintAuthModule extends ReactContextBaseJavaModule implements
         if (cipher == null) {
             inProgress = false;
             reactErrorCallback.invoke("Not supported", FingerprintAuthConstants.NOT_AVAILABLE);
+            return;
+        }
+
+        if (!fingerPrintsAreValid()) {
+            inProgress = false;
+            reactErrorCallback.invoke("New Fingerprint Added", FingerprintAuthConstants.NEW_FINGERPRINT_ADDED);
             return;
         }
 

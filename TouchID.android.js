@@ -17,6 +17,19 @@ export default {
     });
   },
 
+
+  renewTouchIDKey() {
+    NativeTouchID.renewKey();
+  },
+
+  isFingerprintKeyValid() {
+    return new Promise(resolve => {
+      NativeTouchID.checkIfKeyIsValid(valid => {
+        resolve(valid);
+      });
+    });
+  },
+
   authenticate(reason, config) {
     var DEFAULT_CONFIG = {
       title: 'Authentication Required',

@@ -8,6 +8,7 @@ public final class FingerprintAuthConstants {
     public static final int NOT_ENROLLED = 104;
     public static final int AUTHENTICATION_FAILED = 105;
     public static final int AUTHENTICATION_CANCELED = 106;
+    public static final int NEW_FINGERPRINT_ADDED = 106;
 
     private FingerprintAuthConstants() {}
 }
