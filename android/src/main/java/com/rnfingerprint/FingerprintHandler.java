@@ -13,7 +13,7 @@ public class FingerprintHandler extends FingerprintManager.AuthenticationCallbac
     private boolean selfCancelled;
 
     private final FingerprintManager mFingerprintManager;
-    private final Callback mCallback;
+    private Callback mCallback;
 
     public FingerprintHandler(Context context, Callback callback) {
         mFingerprintManager = context.getSystemService(FingerprintManager.class);
@@ -33,8 +33,9 @@ public class FingerprintHandler extends FingerprintManager.AuthenticationCallbac
     @Override
     public void onAuthenticationError(int errCode,
                                       CharSequence errString) {
-        if (!selfCancelled) {
+        if (!selfCancelled && mCallback != null) {
             mCallback.onError(errString.toString(), errCode);
+            mCallback = null;
         }
     }
 
@@ -45,7 +46,10 @@ public class FingerprintHandler extends FingerprintManager.AuthenticationCallbac
 
     @Override
     public void onAuthenticationSucceeded(FingerprintManager.AuthenticationResult result) {
-        mCallback.onAuthenticated();
+        if (mCallback != null) {
+            mCallback.onAuthenticated();
+            mCallback = null;
+        }
         cancelAuthenticationSignal();
     }
 
