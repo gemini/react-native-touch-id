@@ -67,7 +67,7 @@ public class FingerprintAuthModule extends ReactContextBaseJavaModule implements
     private boolean fingerPrintsAreValid() {
         HashSet<String> currentFingerPrints = getFingerprintIds(getReactApplicationContext());
         HashSet<String> savedFingerPrints = getSavedFingerPrints();
-        return currentFingerPrints.equals(savedFingerPrints);
+        return currentFingerPrints.equals(savedFingerPrints) || savedFingerPrints.size() == 0;
     }
 
     @ReactMethod
