@@ -106,6 +106,8 @@ declare module 'react-native-touch-id' {
        * @param config - Returns a `Promise` that rejects if TouchID is not supported. On iOS resolves with a `biometryType` `String` of `FaceID` or `TouchID`
        */
       isSupported(config?: IsSupportedConfig): Promise<BiometryType>;
+
+      isFingerprintKeyValid(): Promise<boolean>;
     };
     export default TouchID;
   }
